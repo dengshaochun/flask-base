@@ -1,0 +1,9 @@
+migrations/
+.env
+README.md
+*.sqlite
+venv/
+Dockerfile
+*.pyc
+*__pycache__*
+docs/

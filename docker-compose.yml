@@ -1,0 +1,25 @@
+version: '3'
+services:
+  web:
+    build: .
+    environment:
+      FLASK_ENV: prod
+      SECRET_KEY: youissbxxxxx
+      PROJECT_NAME: flask-base
+      DATABASE_URL: sqlite:////opt/flask-base/data/prod.sqlite
+      ALERT_GROUP_URL: http://alert.example.com/api/v1/group/
+      ALERT_USERS_URL: http://alert.example.com/api/v1/user/
+      DEFAULT_ALERT_USERS: dengsc,example
+      DEFAULT_ALERT_CHANNELS: wechat,email
+    ports:
+      - 5000:5000
+    volumes:
+      - /var/lib/flask-base/data:/opt/flask-base/data
+      - /var/lib/flask-base/migrations:/opt/flask-base/migrations
+    network_mode: "bridge"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+    container_name: flask-base
