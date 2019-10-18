@@ -4,48 +4,78 @@
 # @Author  : dengsc
 
 
+import json
 import logging
 from demo.api import api
 from celery import Celery
 from celery.result import AsyncResult
 from flask_restful import Resource, reqparse
+
 import demo.errors as errors
 
 
 logger = logging.getLogger(__name__)
 
 
-add_task_parser = reqparse.RequestParser()
-add_task_parser.add_argument('a', type=int)
-add_task_parser.add_argument('b', type=int)
+def validate_args(value):
+    if value:
+        try:
+            tmp = json.loads(value)
+            if isinstance(tmp, (list,)):
+                return tmp
+            else:
+                raise Exception()
+        except Exception:
+            raise ValueError(f'{value} do not convert to List object.')
 
 
-class AddTaskResource(Resource):
+def validate_kwargs(value):
+    if value:
+        try:
+            tmp = json.loads(value)
+            if isinstance(tmp, (dict, )):
+                return tmp
+            else:
+                raise Exception()
+        except Exception:
+            raise ValueError(f'{value} do not convert to Dict object.')
+
+
+execute_task_parser = reqparse.RequestParser()
+execute_task_parser.add_argument('task_name', type=str, required=True)
+execute_task_parser.add_argument('task_args', type=validate_args)
+execute_task_parser.add_argument('task_kwargs', type=validate_kwargs)
+
+
+class TaskResource(Resource):
+
+    def get(self, task_name):
+        from demo.celery_app.tasks import celery_app
+        task_obj = celery_app.tasks.get(task_name)
+        return {'name': task_name, 'desc': task_obj.__doc__}, 200
+
+
+class TaskCollectionResource(Resource):
+
+    def get(self):
+        from demo.celery_app.tasks import celery_app
+        tasks = [x for x in celery_app.tasks.keys()]
+        return {'tasks': tasks}, 200
 
     def post(self):
         """
-        submit add task
-        :return: <str> task id
+        submit a task
         """
-        args = add_task_parser.parse_args()
-        from demo.celery_app.tasks.examples import add
-        result = add.delay(a=args.get('a'), b=args.get('b'))
+        args = execute_task_parser.parse_args()
+        from demo.celery_app.tasks import celery_app
+        current_task = celery_app.tasks.get(args.get('task_name'))
+        task_args = args.get('task_args') if args.get('task_args') else ()
+        task_kwargs = args.get('task_kwargs') if args.get('task_kwargs') else {}
+        result = current_task.delay(*task_args, **task_kwargs)
         return {'task_id': result.id}, 200
 
 
-class HelloTaskResource(Resource):
-
-    def get(self):
-        """
-        submit a hello task
-        :return: <str> task id
-        """
-        from demo.celery_app.tasks.examples import hello
-        result = hello.delay()
-        return {'task_id': result.id}, 200
-
-
-class TaskDetailResource(Resource):
+class TaskResultResource(Resource):
     """
     get celery task status
     """
@@ -69,14 +99,14 @@ class TaskDetailResource(Resource):
 
 
 api.add_resource(
-    AddTaskResource,
-    '/tasks/func/add/'
+    TaskResource,
+    '/tasks/funcs/<task_name>/'
 )
 api.add_resource(
-    HelloTaskResource,
-    '/tasks/func/hello/'
+    TaskCollectionResource,
+    '/tasks/funcs/'
 )
 api.add_resource(
-    TaskDetailResource,
+    TaskResultResource,
     '/tasks/<task_id>/'
 )

@@ -8,6 +8,8 @@ import os
 import logging
 import datetime
 import requests
+from Crypto.Cipher import AES
+from binascii import b2a_hex, a2b_hex
 from pytz import timezone
 
 logger = logging.getLogger(__name__)
@@ -69,7 +71,7 @@ class Alert:
     def __init__(self):
         self.group_url = os.getenv('ALERT_GROUP_URL', None)
         self.users_url = os.getenv('ALERT_USERS_URL', None)
-        self.cst_tz = timezone('Asia/Shanghai')
+        self.cst_tz = timezone(os.getenv('TIMEZONE', 'Asia/Shanghai'))
         self.level = {
             'info': 1,
             'major': 4,
@@ -114,3 +116,34 @@ class Alert:
         r = requests.post(url=self.users_url, json=data)
         logger.debug(r.content)
         return r.json()
+
+
+class PrpCrypt(object):
+
+    def __init__(self, key=os.getenv('AES_SECRET_KEY')):
+        self.length = 16
+        self.coding = 'utf-8'
+        self.key = self.modify_length(key).encode(self.coding)
+        self.mode = AES.MODE_CBC
+
+    def modify_length(self, value):
+        count = len(value)
+        if count < self.length:
+            add = (self.length - count)
+            value = value + ('\0' * add)
+        elif count > self.length:
+            add = (self.length - (count % self.length))
+            value = value + ('\0' * add)
+
+        return value
+
+    def encrypt(self, text):
+        text = self.modify_length(text).encode(self.coding)
+        aes = AES.new(self.key, self.mode, b'0000000000000000')
+        return bytes.decode(b2a_hex(aes.encrypt(text)))
+
+    def decrypt(self, text):
+        aes = AES.new(self.key, self.mode, b'0000000000000000')
+        plain_text = aes.decrypt(a2b_hex(bytes(text, encoding=self.coding)))
+        # 解密后，去掉补足的空格用strip() 去掉
+        return bytes.decode(plain_text).rstrip('\0')
