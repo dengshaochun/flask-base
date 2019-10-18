@@ -11,7 +11,19 @@ from demo import create_app
 
 logger = logging.getLogger(__name__)
 
+
+flask_app = create_app()
 celery_app = Celery()
 celery_app.config_from_object('demo.celery_app.celeryconfig')
-flask_app = create_app()
-flask_app.app_context().push()
+TaskBase = celery_app.Task
+
+
+class ContextTask(TaskBase):
+    abstract = True
+
+    def __call__(self, *args, **kwargs):
+        with flask_app.app_context():
+            return TaskBase.__call__(self, *args, **kwargs)
+
+
+celery_app.Task = ContextTask

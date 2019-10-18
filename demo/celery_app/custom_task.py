@@ -5,15 +5,15 @@
 
 
 import os
-import celery
 import logging
 from demo.utils.common import Alert
+from demo.celery_app.celery_worker import ContextTask
 
 
 logger = logging.getLogger(__name__)
 
 
-class AlertTask(celery.Task):
+class AlertTask(ContextTask):
 
     # 任务失败时执行
     def on_failure(self, exc, task_id, args, kwargs, einfo):
