@@ -4,6 +4,7 @@
 # @Author  : dengsc
 
 
+import datetime
 from sqlalchemy.orm import relationship
 
 from .extensions import db
@@ -59,6 +60,15 @@ class CRUDMixin(object):
 class Model(CRUDMixin, db.Model):
     """Base model class that includes CRUD convenience methods."""
     __abstract__ = True
+
+    def to_json(self):
+        result = dict()
+        for key in self.__mapper__.c.keys():
+            col = getattr(self, key)
+            if isinstance(col, datetime.datetime) or isinstance(col, datetime.date):
+                col = col.isoformat()
+            result[key] = col
+        return result
 
 
 # From Mike Bayer's "Building the app" talk
