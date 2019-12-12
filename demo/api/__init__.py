@@ -29,3 +29,4 @@ meta_fields = {
 
 # Import the resources to add the routes to the blueprint before the app is initialized
 from demo.api.task import *  # noqa
+from demo.api.system import *  # noqa

@@ -4,7 +4,6 @@
 # @Author  : dengsc
 
 
-import json
 import logging
 from demo.api import api
 from celery import Celery
@@ -17,34 +16,10 @@ import demo.errors as errors
 logger = logging.getLogger(__name__)
 
 
-def validate_args(value):
-    if value:
-        try:
-            tmp = json.loads(value)
-            if isinstance(tmp, (list,)):
-                return tmp
-            else:
-                raise Exception()
-        except Exception:
-            raise ValueError(f'{value} do not convert to List object.')
-
-
-def validate_kwargs(value):
-    if value:
-        try:
-            tmp = json.loads(value)
-            if isinstance(tmp, (dict, )):
-                return tmp
-            else:
-                raise Exception()
-        except Exception:
-            raise ValueError(f'{value} do not convert to Dict object.')
-
-
 execute_task_parser = reqparse.RequestParser()
 execute_task_parser.add_argument('task_name', type=str, required=True)
-execute_task_parser.add_argument('task_args', type=validate_args)
-execute_task_parser.add_argument('task_kwargs', type=validate_kwargs)
+execute_task_parser.add_argument('task_args', type=list, location='json')
+execute_task_parser.add_argument('task_kwargs', type=dict, location='json')
 
 
 class TaskResource(Resource):
